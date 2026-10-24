@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Llistat de recursos educatius per utilitzar a l'aula</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
+  
+  <style>
+    /* Estils generals en tons grocs i càlids */
+    :root {
+      --fons: #FFFCF3;          /* Groc crema molt clar */
+      --targeta: #FFFFFF;       /* Blanc per a la targeta principal */
+      --text: #3D3522;          /* Marró fosquet per a un millor contrast */
+      --groc-principal: #F6AD55; /* Groc ambre càlid */
+      --groc-hover: #ED8936;     /* Groc intens per a l'efecte de passar-hi sobre */
+      --borda: #FEEBC8;         /* Borda suau */
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--fons);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      background-color: var(--targeta);
+      border: 2px solid var(--borda);
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 10px 25px rgba(214, 158, 46, 0.1);
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 30px;
+      color: #744210;
+      line-height: 1.3;
+    }
+
+    .llista-recursos {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    /* Estil del botó del recurs */
+    .boto-recurs {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background-color: var(--groc-principal);
+      color: #FFFFFF;
+      text-decoration: none;
+      padding: 16px 24px;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      transition: all 0.2s ease-in-out;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .boto-recurs:hover {
+      background-color: var(--groc-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(237, 137, 54, 0.25);
+    }
+
+    .fletxa {
+      font-size: 1.2rem;
+      transition: transform 0.2s ease;
+    }
+
+    .boto-recurs:hover .fletxa {
+      transform: translateX(4px);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Llistat de recursos educatius per utilitzar a l'aula</h1>
+
+    <nav class="llista-recursos">
+      
+      <!-- INICI DEL BLOC A COPIAR I ENGANXAR PER NOU RECURS -->
+      <a href="marcador" class="boto-recurs">
+        <span>Marcador interactiu</span>
+        <span class="fletxa">➔</span>
+      </a>
+      <!-- FI DEL BLOC -->
+
+    </nav>
+  </div>
+
+</body>
+</html>
