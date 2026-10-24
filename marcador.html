@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Marcador</title>
+    <!-- Favicon with 🔢 emoji -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔢</text></svg>">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Canvas Confetti CDN -->
@@ -362,18 +364,18 @@
             const board = document.getElementById('scoreboard-screen');
             board.innerHTML = '';
 
-            // Calculate grid cols/rows for 16:9 efficiency
-            let gridColsClass = 'grid-cols-2';
-            if (teamCount === 3) gridColsClass = 'grid-cols-3';
-            if (teamCount === 4) gridColsClass = 'grid-cols-2 lg:grid-cols-4';
-            if (teamCount === 5 || teamCount === 6) gridColsClass = 'grid-cols-3';
+            // Calculate grid cols/rows for 16:9 efficiency and keep elements centered
+            let gridLayoutClass = 'grid-cols-2 max-w-4xl max-h-[85%]';
+            if (teamCount === 3) gridLayoutClass = 'grid-cols-3 max-w-6xl max-h-[85%]';
+            if (teamCount === 4) gridLayoutClass = 'grid-cols-2 lg:grid-cols-4 max-w-7xl max-h-[85%]';
+            if (teamCount === 5 || teamCount === 6) gridLayoutClass = 'grid-cols-3 max-w-6xl max-h-[92%]';
 
-            board.className = `absolute inset-0 z-10 p-4 grid ${gridColsClass} gap-4 h-full w-full items-stretch`;
+            board.className = `absolute inset-0 z-10 p-6 grid ${gridLayoutClass} gap-6 m-auto items-center justify-center h-full w-full`;
 
             teams.forEach((team) => {
                 const teamPanel = document.createElement('div');
                 teamPanel.id = `team-card-${team.id}`;
-                teamPanel.className = `team-card relative rounded-3xl p-4 flex flex-col justify-between items-center shadow-xl transition-all border-4 ${team.color.border} overflow-hidden`;
+                teamPanel.className = `team-card relative rounded-3xl p-4 flex flex-col justify-between items-center shadow-xl transition-all border-4 ${team.color.border} overflow-hidden h-full w-full max-h-[380px]`;
                 teamPanel.style.backgroundColor = team.color.hex;
 
                 teamPanel.innerHTML = `
