@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Música i Cinema: Ordre de les Escenes</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome per a icones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Google Fonts: Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #090d16;
+            color: #f8fafc;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Sense scroll exterior */
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Encaix estricte en ràtio 16:9 per a projector o pantalla d'aula */
+        .stage-container {
+            aspect-ratio: 16 / 9;
+            width: min(100vw, calc(100vh * 16 / 9));
+            height: min(100vh, calc(100vw * 9 / 16));
+            max-width: 100vw;
+            max-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            background: radial-gradient(circle at center, #1b2436 0%, #080c14 100%);
+            box-shadow: 0 0 40px rgba(0,0,0,0.9);
+            overflow: hidden;
+        }
+
+        .card-inner {
+            transition: all 0.2s ease-in-out;
+        }
+
+        .card-selected {
+            transform: scale(1.02);
+            box-shadow: 0 0 16px rgba(245, 158, 11, 0.8);
+            border-color: #f59e0b !important;
+            background-color: #1e293b !important;
+        }
+
+        .card-solved {
+            opacity: 0.9;
+            background-color: #064e3b !important;
+            border-color: #10b981 !important;
+        }
+
+        /* Scrollbar interna micro per a text molt llarg */
+        .card-text-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .card-text-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .card-text-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+        }
+
+        /* Animació de sacsejada en fallar */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+        .shake-animation {
+            animation: shake 0.35s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- CONTENIDOR PRINCIPAL 16:9 SENSE SCROLL EXTERIOR -->
+    <div class="stage-container p-2 md:p-3 flex flex-col justify-between border-2 border-slate-800 rounded-lg">
+
+        <!-- 1. CAPÇALERA COMPACTA -->
+        <header class="bg-slate-900/90 border border-slate-700/80 rounded-xl px-3 py-2 shadow flex items-center justify-between gap-2 shrink-0">
+            <div class="flex items-center gap-2">
+                <span class="bg-amber-500 text-slate-950 px-2 py-0.5 rounded font-black text-xs md:text-sm flex items-center gap-1">
+                    <i class="fa-solid fa-film"></i>
+                    <i class="fa-solid fa-list-ol"></i>
+                </span>
+                <h1 class="text-xs md:text-base font-black tracking-tight text-amber-400 uppercase">
+                    MÚSICA I CINEMA: <span class="text-white font-bold">ORDRE DE LES ESCENES</span>
+                </h1>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <div class="bg-slate-800 border border-slate-700 px-2.5 py-1 rounded text-xs font-bold text-slate-300">
+                    Progrés: <span id="progress-text" class="text-amber-400 font-extrabold">0 / 5 resolts</span>
+                </div>
+                <button onclick="toggleEditModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-2.5 py-1 rounded text-xs flex items-center gap-1 transition">
+                    <i class="fa-solid fa-pen-to-square"></i> Edita Textos
+                </button>
+                <button onclick="resetCurrentGroup()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-2.5 py-1 rounded text-xs flex items-center gap-1 transition border border-slate-700">
+                    <i class="fa-solid fa-rotate-right"></i> Reinicia Grup
+                </button>
+            </div>
+        </header>
+
+        <!-- MISSATGE DE FEEDBACK (CORRECTE / INCORRECTE / ORDRE SENSE RESOLUCCIÓ) -->
+        <div id="feedback-message" class="hidden my-0.5 p-1.5 rounded text-xs md:text-sm font-bold text-center transition-all duration-200 shrink-0 shadow-md"></div>
+
+        <!-- 2. GRAELLA DE 6 CASELLES (3 COLUMNES x 2 FILES) -->
+        <main class="flex-grow my-1 grid grid-cols-3 grid-rows-2 gap-2 overflow-hidden" id="scenes-grid">
+            <!-- Renderitzat per JS -->
+        </main>
+
+        <!-- 3. BARRA INFERIOR: SELECTOR DE GRUPS I BOTÓ DE VERIFICACIÓ -->
+        <footer class="bg-slate-900/95 border border-slate-700/80 rounded-xl p-2 flex items-center justify-between gap-2 shrink-0 shadow-lg">
+            <!-- Selectors GRUP 1 fins a GRUP 5 -->
+            <div class="flex items-center gap-1.5">
+                <span class="text-xs uppercase font-black text-amber-400 mr-1 flex items-center gap-1">
+                    <i class="fa-solid fa-users"></i> Selecciona Grup:
+                </span>
+                <div id="group-buttons" class="flex items-center gap-1">
+                    <!-- Generat per JS -->
+                </div>
+            </div>
+
+            <!-- Contador de caselles seleccionades i botó Verificar -->
+            <div class="flex items-center gap-2">
+                <span id="selection-count" class="text-xs font-bold bg-slate-950 border border-slate-800 px-2.5 py-1 rounded text-slate-400">
+                    0 / 3 seleccionades
+                </span>
+                <button id="verify-btn" onclick="verifySelection()" disabled class="bg-amber-500 hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-600 border border-amber-400 text-slate-950 font-black px-4 py-1.5 rounded text-xs md:text-sm flex items-center gap-1.5 transition cursor-pointer disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-circle-check"></i> VERIFICA
+                </button>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- MODAL D'EDICIÓ DEL MESTRE -->
+    <div id="edit-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-2 hidden">
+        <div class="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-4xl h-[88vh] flex flex-col shadow-2xl">
+            <div class="p-2.5 border-b border-slate-700 flex justify-between items-center bg-slate-800/90 rounded-t-xl">
+                <h3 class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                    <i class="fa-solid fa-sliders"></i> Personalitza els textos de les escenes
+                </h3>
+                <button onclick="toggleEditModal()" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+
+            <div class="p-3 overflow-y-auto space-y-3 flex-grow text-xs" id="edit-form-container">
+                <!-- Formulari JS -->
+            </div>
+
+            <div class="p-2 border-t border-slate-700 flex justify-end gap-2 bg-slate-800/90 rounded-b-xl">
+                <button onclick="restoreDefaultData()" class="px-2.5 py-1 bg-slate-800 text-slate-400 font-bold rounded text-xs border border-slate-700 mr-auto">
+                    Restablir
+                </button>
+                <button onclick="toggleEditModal()" class="px-2.5 py-1 bg-slate-700 text-white font-bold rounded text-xs">
+                    Cancel·lar
+                </button>
+                <button onclick="saveCustomData()" class="px-3 py-1 bg-amber-500 text-slate-950 font-black rounded text-xs">
+                    Guardar Canvis
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dades reals introduïdes pel mestre: 3 escenes/paràgrafs exactes en ordre per a cada grup
+        const defaultGroupsData = [
+            {
+                id: 1,
+                name: "GRUP 1",
+                scenes: [
+                    {
+                        seq: 1,
+                        text: "Un grup d’amics estaven caminant pel bosc i es van trobar un llibre que posava “Sergio”.",
+                        icon: "fa-book"
+                    },
+                    {
+                        seq: 2,
+                        text: "Va aparéixer un bruixot que es deia Sergio i va adormir al grup d’amics.",
+                        icon: "fa-wand-magic-sparkles"
+                    },
+                    {
+                        seq: 3,
+                        text: "Finalment es van despertar i el bruixot sergio no els va poder atrapar.",
+                        icon: "fa-person-running"
+                    }
+                ]
+            },
+            {
+                id: 2,
+                name: "GRUP 2",
+                scenes: [
+                    {
+                        seq: 1,
+                        text: "Uns ciutadans ballen i hi ha una noia rentant, dos nois trapelles i tot el poble està content.",
+                        icon: "fa-icons"
+                    },
+                    {
+                        seq: 2,
+                        text: "Comença a ploure i tothom se’n va. Surten uns supervillans i un superheroi. Volen anar a per la princesa. El superheroi els ho impedeix i surt una noia a ajudar a la princesa. El superheroi aconsegueix guanyar però les conseqüències són la mort.",
+                        icon: "fa-mask"
+                    },
+                    {
+                        seq: 3,
+                        text: "La dona del ball plora i la princesa i els ciutadans surten a veure què ha passat.",
+                        icon: "fa-face-sad-tear"
+                    }
+                ]
+            },
+            {
+                id: 3,
+                name: "GRUP 3",
+                scenes: [
+                    {
+                        seq: 1,
+                        text: "Dos pirates estaven en un vaixell anant a una illa perillosa per veure què hi passava i de sobte va sonar una música divertida.",
+                        icon: "fa-ship"
+                    },
+                    {
+                        seq: 2,
+                        text: "Els pirates hi van veure a dos pistolers ballant. Després, troben una nena perduda i s’uneix a ballar. Van arribar a la illa perillosa i van entrar a un túnel.",
+                        icon: "fa-map-location-dot"
+                    },
+                    {
+                        seq: 3,
+                        text: "Tots estaven molt espantats perquè hi havia sang, teranyines i aranyes. De sobte, els pistolers es van posar a ballar. Tot van anar al vaixell i van arribar a casa.",
+                        icon: "fa-spider"
+                    }
+                ]
+            },
+            {
+                id: 4,
+                name: "GRUP 4",
+                scenes: [
+                    {
+                        seq: 1,
+                        text: "Estan comprant i mirant els ocells i parlant.",
+                        icon: "fa-crow"
+                    },
+                    {
+                        seq: 2,
+                        text: "Un villà, els roba, els empenta i els treu tot el que tenen. El superheroi arriba i agafa el villà i li treu tot el que ha robat. L’empenta i se l’emporta.",
+                        icon: "fa-user-ninja"
+                    },
+                    {
+                        seq: 3,
+                        text: "Després, arriba el superheroi i torna als ciutadans tot el que el villà havia robat.",
+                        icon: "fa-shield-halved"
+                    }
+                ]
+            },
+            {
+                id: 5,
+                name: "GRUP 5",
+                scenes: [
+                    {
+                        seq: 1,
+                        text: "Dos nens juguen amb cotxes i, després, van i desapareixen.",
+                        icon: "fa-car"
+                    },
+                    {
+                        seq: 2,
+                        text: "La seva cosina estava cridant als nens però no responien. La cosina s’enrecorda que tenien un GPS. Va a pel segrestador i el va matar. Va aparéixer l’ajudant del segrestador i també el mata.",
+                        icon: "fa-location-crosshairs"
+                    },
+                    {
+                        seq: 3,
+                        text: "Va agafar als nens i van anar a casa i mai més jugarien sols.",
+                        icon: "fa-house-user"
+                    }
+                ]
+            }
+        ];
+
+        let groupsData = JSON.parse(localStorage.getItem('musica_cinema_text_data')) || defaultGroupsData;
+        let currentGroupSelected = 1;
+        let currentGridCards = []; // Les 6 caselles en pantalla (3 correctes + 3 falses)
+        let selectedCardsInOrder = []; // Array de targetes seleccionades en ordre [badge 1, badge 2, badge 3]
+        let starCardsIds = []; // Targetes que reben estrella (són del grup però no en ordre)
+        let solvedGroups = [];
+
+        window.onload = function() {
+            initGame();
+        };
+
+        function initGame() {
+            solvedGroups = [];
+            currentGroupSelected = 1;
+            loadGroupCards(currentGroupSelected);
+        }
+
+        function loadGroupCards(groupId) {
+            selectedCardsInOrder = [];
+            starCardsIds = [];
+            hideFeedback();
+
+            const targetGroup = groupsData.find(g => g.id === groupId);
+            
+            // 1. Les 3 escenes correctes del grup seleccionat
+            const correctCards = targetGroup.scenes.map(s => ({
+                id: `g${groupId}-seq${s.seq}`,
+                groupId: groupId,
+                seq: s.seq,
+                text: s.text,
+                icon: s.icon,
+                isCorrect: true
+            }));
+
+            // 2. Cercar 3 escenes FALSES (distractors) d'altres grups
+            let otherScenesPool = [];
+            groupsData.forEach(g => {
+                if (g.id !== groupId) {
+                    g.scenes.forEach(s => {
+                        otherScenesPool.push({
+                            id: `g${g.id}-seq${s.seq}`,
+                            groupId: g.id,
+                            seq: s.seq,
+                            text: s.text,
+                            icon: s.icon,
+                            isCorrect: false
+                        });
+                    });
+                }
+            });
+
+            // Barrejar i triar 3 falses
+            const shuffledPool = shuffleArray(otherScenesPool);
+            const distractorCards = shuffledPool.slice(0, 3);
+
+            // 3. Unir les 6 caselles i barrejar-les per a la pantalla
+            currentGridCards = shuffleArray([...correctCards, ...distractorCards]);
+
+            renderGroupButtons();
+            renderGrid();
+            updateProgress();
+            updateSelectionState();
+        }
+
+        function shuffleArray(array) {
+            let arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function renderGroupButtons() {
+            const container = document.getElementById('group-buttons');
+            container.innerHTML = '';
+
+            groupsData.forEach(group => {
+                const isSolved = solvedGroups.includes(group.id);
+                const isActive = currentGroupSelected === group.id;
+
+                const btn = document.createElement('button');
+                btn.onclick = () => selectGroup(group.id);
+                
+                let baseStyle = "px-2.5 py-1 rounded text-xs font-bold transition flex items-center gap-1 border cursor-pointer ";
+                
+                if (isSolved) {
+                    baseStyle += "bg-emerald-950/90 border-emerald-500 text-emerald-400";
+                } else if (isActive) {
+                    baseStyle += "bg-amber-500 border-amber-300 text-slate-950 font-black shadow-md";
+                } else {
+                    baseStyle += "bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700";
+                }
+
+                btn.className = baseStyle;
+                btn.innerHTML = `
+                    <span>${group.name}</span>
+                    ${isSolved ? '<i class="fa-solid fa-circle-check text-emerald-400 text-xs"></i>' : ''}
+                `;
+                container.appendChild(btn);
+            });
+        }
+
+        function selectGroup(groupId) {
+            if (currentGroupSelected === groupId) return;
+            currentGroupSelected = groupId;
+            loadGroupCards(groupId);
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('scenes-grid');
+            grid.innerHTML = '';
+
+            const isGroupSolved = solvedGroups.includes(currentGroupSelected);
+
+            currentGridCards.forEach((card, index) => {
+                const selectedIndex = selectedCardsInOrder.indexOf(card.id);
+                const isSelected = selectedIndex !== -1;
+                const badgeNumber = selectedIndex + 1; // 1, 2 o 3
+                const hasStar = starCardsIds.includes(card.id);
+
+                const cardEl = document.createElement('div');
+                cardEl.className = "w-full h-full cursor-pointer select-none overflow-hidden";
+                cardEl.onclick = () => toggleCardSelection(card.id);
+
+                let cardInnerClass = "card-inner w-full h-full bg-slate-800/80 border border-slate-700/80 rounded-xl p-2 md:p-2.5 flex flex-col justify-between relative shadow transition-all ";
+
+                if (isGroupSolved && card.isCorrect) {
+                    cardInnerClass += "card-solved";
+                } else if (isSelected) {
+                    cardInnerClass += "card-selected";
+                } else {
+                    cardInnerClass += "hover:border-slate-500 hover:bg-slate-700/70";
+                }
+
+                cardEl.innerHTML = `
+                    <div class="${cardInnerClass}">
+                        <!-- Capçalera de la casella -->
+                        <div class="flex items-center justify-between border-b border-slate-700/60 pb-1 mb-1 shrink-0">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-[10px] font-black text-amber-400 bg-slate-950/80 px-1.5 py-0.5 rounded">
+                                    Opció #${index + 1}
+                                </span>
+                                <i class="fa-solid ${card.icon || 'fa-film'} text-xs ${card.isCorrect && isGroupSolved ? 'text-emerald-300' : 'text-slate-400'}"></i>
+                            </div>
+
+                            <!-- INDICADORS I BADGES DE SELECCIÓ (1, 2, 3) I ESTRELLA (⭐) -->
+                            <div class="flex items-center gap-1">
+                                ${hasStar ? `
+                                    <span class="bg-amber-400 text-slate-950 text-xs font-black px-1.5 py-0.5 rounded-full flex items-center gap-1 shadow animate-bounce" title="Aquesta escena pertany al grup, però l'ordre no és correcte!">
+                                        ⭐ Del grup
+                                    </span>
+                                ` : ''}
+
+                                ${isSelected ? `
+                                    <span class="w-6 h-6 rounded-full bg-amber-500 border-2 border-amber-200 text-slate-950 font-black text-xs flex items-center justify-center shadow-lg">
+                                        ${badgeNumber}
+                                    </span>
+                                ` : ''}
+
+                                ${isGroupSolved && card.isCorrect ? `
+                                    <span class="w-6 h-6 rounded-full bg-emerald-500 border-2 border-emerald-200 text-slate-950 font-black text-xs flex items-center justify-center shadow-lg">
+                                        ${card.seq}
+                                    </span>
+                                ` : ''}
+                            </div>
+                        </div>
+
+                        <!-- TEXT DE L'ESCENA -->
+                        <div class="flex-grow overflow-y-auto card-text-scroll pr-1">
+                            <p class="text-xs md:text-sm leading-snug text-slate-100 font-medium">
+                                ${card.text}
+                            </p>
+                        </div>
+                    </div>
+                `;
+
+                grid.appendChild(cardEl);
+            });
+        }
+
+        function toggleCardSelection(cardId) {
+            if (solvedGroups.includes(currentGroupSelected)) return;
+
+            // Treure les estrelles de la vista anterior en interactuar
+            starCardsIds = [];
+
+            const index = selectedCardsInOrder.indexOf(cardId);
+            if (index > -1) {
+                // Desseleccionar
+                selectedCardsInOrder.splice(index, 1);
+            } else {
+                // Seleccionar (màxim 3)
+                if (selectedCardsInOrder.length < 3) {
+                    selectedCardsInOrder.push(cardId);
+                } else {
+                    showFeedback("Ja has triat les 3 escenes (1, 2 i 3). Fes clic a VERIFICA!", "warning");
+                    return;
+                }
+            }
+
+            renderGrid();
+            updateSelectionState();
+            hideFeedback();
+        }
+
+        function updateSelectionState() {
+            const countSpan = document.getElementById('selection-count');
+            const verifyBtn = document.getElementById('verify-btn');
+            const count = selectedCardsInOrder.length;
+
+            countSpan.innerText = `${count} / 3 seleccionades`;
+
+            if (count === 3) {
+                verifyBtn.disabled = false;
+                countSpan.classList.add('text-amber-400', 'border-amber-500/50');
+            } else {
+                verifyBtn.disabled = true;
+                countSpan.classList.remove('text-amber-400', 'border-amber-500/50');
+            }
+        }
+
+        function verifySelection() {
+            if (selectedCardsInOrder.length !== 3) return;
+
+            const selectedCards = selectedCardsInOrder.map(id => currentGridCards.find(c => c.id === id));
+            
+            // Comprovar si totes 3 pertanyen al grup actual
+            const allBelongToGroup = selectedCards.every(c => c.groupId === currentGroupSelected);
+
+            if (allBelongToGroup) {
+                // Comprovar si estan en l'ordre exactes 1 -> 2 -> 3
+                const isExactOrder = selectedCards[0].seq === 1 && selectedCards[1].seq === 2 && selectedCards[2].seq === 3;
+
+                if (isExactOrder) {
+                    // ESCENARI A: 3 BELONG TO GROUP AND IN EXACT ORDER (1, 2, 3)
+                    solvedGroups.push(currentGroupSelected);
+                    showFeedback(` EXCEL·LENT! Heu trobat les 3 escenes del ${getGroupName(currentGroupSelected)} en l'ORDRE CORRECTE (1, 2 i 3)!`, "success");
+                    
+                    triggerConfetti();
+                    selectedCardsInOrder = [];
+                    starCardsIds = [];
+
+                    updateProgress();
+                    renderGroupButtons();
+                    renderGrid();
+                    updateSelectionState();
+
+                    if (solvedGroups.length === groupsData.length) {
+                        setTimeout(() => {
+                            showFeedback(" FELICITATS! Heu completat correctament tots els 5 grups!", "success");
+                        }, 400);
+                    }
+                } else {
+                    // ESCENARI B: LES 3 SÓN DEL GRUP PERÒ L'ORDRE ÉS INCORRECTE
+                    starCardsIds = [...selectedCardsInOrder]; // Assignar estrella (⭐) a les 3
+                    showFeedback(" ⭐ Les 3 escenes pertanyen a aquest grup, però L'ORDRE NO ÉS CORRECTE! Reorganitzeu-les en l'ordre 1, 2 i 3.", "warning");
+
+                    const grid = document.getElementById('scenes-grid');
+                    grid.classList.add('shake-animation');
+                    setTimeout(() => grid.classList.remove('shake-animation'), 350);
+                    
+                    renderGrid();
+                }
+            } else {
+                // ESCENARI C: HI HA PARÀGRAFS FALSOS / DISTRACTORS
+                showFeedback(" Hi ha escenes que no pertanyen a aquest grup! Observeu bé les accions i torneu-ho a intentar.", "error");
+                
+                const grid = document.getElementById('scenes-grid');
+                grid.classList.add('shake-animation');
+                setTimeout(() => grid.classList.remove('shake-animation'), 350);
+            }
+        }
+
+        function getGroupName(groupId) {
+            const g = groupsData.find(item => item.id === groupId);
+            return g ? g.name : `GRUP ${groupId}`;
+        }
+
+        function updateProgress() {
+            document.getElementById('progress-text').innerText = `${solvedGroups.length} / ${groupsData.length} resolts`;
+        }
+
+        function showFeedback(message, type) {
+            const msgBox = document.getElementById('feedback-message');
+            msgBox.classList.remove('hidden', 'bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300', 'bg-rose-500/20', 'border-rose-500', 'text-rose-300', 'bg-amber-500/20', 'border-amber-500', 'text-amber-300');
+            
+            msgBox.innerText = message;
+            msgBox.classList.add('border');
+
+            if (type === 'success') {
+                msgBox.classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300');
+            } else if (type === 'error') {
+                msgBox.classList.add('bg-rose-500/20', 'border-rose-500', 'text-rose-300');
+            } else {
+                msgBox.classList.add('bg-amber-500/20', 'border-amber-500', 'text-amber-300');
+            }
+        }
+
+        function hideFeedback() {
+            document.getElementById('feedback-message').classList.add('hidden');
+        }
+
+        function triggerConfetti() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 85,
+                    spread: 70,
+                    origin: { y: 0.85 }
+                });
+            }
+        }
+
+        function resetCurrentGroup() {
+            loadGroupCards(currentGroupSelected);
+        }
+
+        function toggleEditModal() {
+            const modal = document.getElementById('edit-modal');
+            if (modal.classList.contains('hidden')) {
+                buildEditForm();
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function buildEditForm() {
+            const container = document.getElementById('edit-form-container');
+            container.innerHTML = '';
+
+            groupsData.forEach((group, gIndex) => {
+                const groupCard = document.createElement('div');
+                groupCard.className = "bg-slate-950 border border-slate-800 rounded-lg p-2.5 space-y-2";
+
+                let scenesHTML = '';
+                group.scenes.forEach((scene, sIndex) => {
+                    scenesHTML += `
+                        <div class="bg-slate-900 p-2 rounded border border-slate-800 space-y-1">
+                            <span class="font-bold text-amber-400 text-xs">Escena ${scene.seq}</span>
+                            <textarea id="edit-g${gIndex}-s${sIndex}-text" rows="2" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-slate-100 focus:outline-none">${scene.text}</textarea>
+                        </div>
+                    `;
+                });
+
+                groupCard.innerHTML = `
+                    <div class="flex items-center gap-2 border-b border-slate-800 pb-1">
+                        <i class="fa-solid fa-users text-amber-400"></i>
+                        <input type="text" id="edit-g${gIndex}-name" value="${group.name}" class="bg-slate-900 font-bold text-amber-400 border border-slate-700 rounded px-2 py-0.5 text-xs">
+                    </div>
+                    <div class="space-y-1.5">
+                        ${scenesHTML}
+                    </div>
+                `;
+
+                container.appendChild(groupCard);
+            });
+        }
+
+        function saveCustomData() {
+            let updatedData = JSON.parse(JSON.stringify(groupsData));
+
+            updatedData.forEach((group, gIndex) => {
+                const nameInput = document.getElementById(`edit-g${gIndex}-name`);
+                if (nameInput) group.name = nameInput.value;
+
+                group.scenes.forEach((scene, sIndex) => {
+                    const textInput = document.getElementById(`edit-g${gIndex}-s${sIndex}-text`);
+                    if (textInput) scene.text = textInput.value;
+                });
+            });
+
+            groupsData = updatedData;
+            localStorage.setItem('musica_cinema_text_data', JSON.stringify(groupsData));
+            
+            toggleEditModal();
+            initGame();
+        }
+
+        function restoreDefaultData() {
+            localStorage.removeItem('musica_cinema_text_data');
+            groupsData = JSON.parse(JSON.stringify(defaultGroupsData));
+            toggleEditModal();
+            initGame();
+        }
+    </script>
+</body>
+</html>
