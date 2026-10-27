@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <title>Simulador d'Il·luminació Teatral & Taula DMX</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #121212;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* VISTA DE TEATRE (CANVAS) */
+    #stage-container {
+      flex: 1;
+      position: relative;
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-content: center;
+    }
+    canvas {
+      display: block;
+      background: #050505;
+    }
+
+    /* TAULA DMX */
+    #dmx-console {
+      height: 320px;
+      background: #1e1e24;
+      border-top: 3px solid #333;
+      display: flex;
+      flex-direction: column;
+      padding: 10px 20px;
+      gap: 10px;
+    }
+
+    .console-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #333;
+      padding-bottom: 8px;
+    }
+    .console-header h2 { font-size: 1.1rem; color: #ff9800; text-transform: uppercase; letter-spacing: 1px; }
+
+    /* CONTROLS DE MEMÒRIES */
+    .memory-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .btn {
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+      padding: 6px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #444; }
+    .btn-rec { background: #b71c1c; border-color: #d32f2f; }
+    .btn-rec:hover { background: #d32f2f; }
+    .btn-play { background: #1b5e20; border-color: #2e7d32; }
+    .btn-play:hover { background: #2e7d32; }
+
+    /* FADERS / CANALS DMX */
+    .faders-container {
+      display: flex;
+      gap: 15px;
+      overflow-x: auto;
+      padding: 10px 0;
+      flex: 1;
+    }
+    .fixture-card {
+      background: #2a2a32;
+      border-radius: 6px;
+      padding: 10px;
+      min-width: 170px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border: 1px solid #3d3d4a;
+    }
+    .fixture-title {
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: #00bcd4;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    .channel-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+    }
+    .channel-row label { width: 50px; }
+    .channel-row input[type=range] { flex: 1; margin: 0 5px; cursor: pointer; }
+    .channel-row span { width: 30px; text-align: right; font-family: monospace; }
+  </style>
+</head>
+<body>
+
+  <!-- SIMULADOR VISUAL DEL TEATRE -->
+  <div id="stage-container">
+    <canvas id="stage"></canvas>
+  </div>
+
+  <!-- TAULA DE CONTROL DMX -->
+  <div id="dmx-console">
+    <div class="console-header">
+      <h2>Taula de Control DMX 512</h2>
+      <div class="memory-controls">
+        <button class="btn btn-rec" onclick="recordScene()">● Enregistrar Escena</button>
+        <button class="btn btn-play" onclick="playScene(0)">Escena 1</button>
+        <button class="btn btn-play" onclick="playScene(1)">Escena 2</button>
+        <button class="btn btn-play" onclick="playScene(2)">Escena 3</button>
+        <button class="btn" onclick="clearScenes()">Netejar Escenes</button>
+      </div>
+    </div>
+
+    <div class="faders-container" id="faders"></div>
+  </div>
+
+  <script>
+    // Configuració del teatre i projectors (Fixtures)
+    const fixtures = [
+      // Fets Fixos (Fons / Frontals / Laterals)
+      { id: 1, name: "Retrofons Esquerra (Fix)", type: "fixed", x: 200, y: 80, angle: 90, dim: 255, color: "#ff0000", filter: 0 },
+      { id: 2, name: "Retrofons Dreta (Fix)", type: "fixed", x: 600, y: 80, angle: 90, dim: 255, color: "#0000ff", filter: 0 },
+      { id: 3, name: "Frontal Central (Fix)", type: "fixed", x: 400, y: 450, angle: 270, dim: 200, color: "#ffffff", filter: 0 },
+      
+      // Caps Mòbils (Moving Heads)
+      { id: 4, name: "Mòbil Vara 1", type: "moving", x: 250, y: 150, angle: 90, pan: 0, tilt: 0, dim: 255, color: "#00ff00", filter: 0 },
+      { id: 5, name: "Mòbil Vara 2", type: "moving", x: 550, y: 150, angle: 90, pan: 0, tilt: 0, dim: 255, color: "#ff00ff", filter: 0 }
+    ];
+
+    // Memòries gravades
+    let savedScenes = [];
+
+    // Inicialització Canvas
+    const canvas = document.getElementById('stage');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = canvas.parentElement.clientHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Dibuixa l'escenari i les llums
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Dibuixar Escenari (Terra)
+      const stageWidth = 600;
+      const stageHeight = 350;
+      const stageX = (canvas.width - stageWidth) / 2;
+      const stageY = (canvas.height - stageHeight) / 2;
+
+      ctx.strokeStyle = '#444';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(stageX, stageY, stageWidth, stageHeight);
+      ctx.fillStyle = '#111';
+      ctx.fillRect(stageX, stageY, stageWidth, stageHeight);
+
+      // Dibuixar Feixos de Llum
+      fixtures.forEach(fix => {
+        if (fix.dim > 0) {
+          ctx.save();
+          
+          let actualAngle = fix.angle;
+          if (fix.type === 'moving') {
+            actualAngle += (fix.pan - 127) * 0.7; // Calcul de Pan en graus
+          }
+
+          const rad = (actualAngle * Math.PI) / 180;
+          const beamLength = 150 + (fix.type === 'moving' ? (fix.tilt / 255) * 100 : 50);
+          const beamWidth = Math.PI / 4; // Ample del feix
+
+          // Creació del gradient de llum
+          const gradient = ctx.createRadialGradient(fix.x, fix.y, 10, fix.x, fix.y, beamLength);
+          const alpha = (fix.dim / 255).toFixed(2);
+          
+          // Filtre (desenfocament/frost)
+          const colorHex = fix.color;
+          gradient.addColorStop(0, hexToRgba(colorHex, alpha));
+          gradient.addColorStop(1, hexToRgba(colorHex, 0));
+
+          ctx.beginPath();
+          ctx.moveTo(fix.x, fix.y);
+          ctx.arc(fix.x, fix.y, beamLength, rad - beamWidth / 2, rad + beamWidth / 2);
+          ctx.closePath();
+          
+          ctx.fillStyle = gradient;
+          if (fix.filter > 0) {
+            ctx.filter = `blur(${fix.filter / 25}px)`; // Simula filtre de difusió (Frost)
+          }
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Dibuixar la font física del projector
+        ctx.fillStyle = fix.type === 'moving' ? '#00bcd4' : '#ff9800';
+        ctx.beginPath();
+        ctx.arc(fix.x, fix.y, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = '10px sans-serif';
+        ctx.fillText(fix.name, fix.x - 30, fix.y - 12);
+      });
+
+      requestAnimationFrame(render);
+    }
+
+    // Auxiliar per a transparència del color hex
+    function hexToRgba(hex, alpha) {
+      let r = parseInt(hex.slice(1, 3), 16);
+      let g = parseInt(hex.slice(3, 5), 16);
+      let b = parseInt(hex.slice(5, 7), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    // Generador de la Taula DMX UI
+    function buildDMXConsole() {
+      const container = document.getElementById('faders');
+      container.innerHTML = '';
+
+      fixtures.forEach((fix, index) => {
+        const card = document.createElement('div');
+        card.className = 'fixture-card';
+        card.innerHTML = `<div class="fixture-title">${fix.name}</div>`;
+
+        // Channel Dimmer
+        card.appendChild(createSlider('Dimmer', fix.dim, 0, 255, val => fix.dim = parseInt(val)));
+        
+        // Channel Color
+        const colorRow = document.createElement('div');
+        colorRow.className = 'channel-row';
+        colorRow.innerHTML = `<label>Color</label><input type="color" value="${fix.color}">`;
+        colorRow.querySelector('input').addEventListener('input', e => fix.color = e.target.value);
+        card.appendChild(colorRow);
+
+        // Moviment (Només Caps Mòbils)
+        if (fix.type === 'moving') {
+          card.appendChild(createSlider('Pan', fix.pan, 0, 255, val => fix.pan = parseInt(val)));
+          card.appendChild(createSlider('Tilt', fix.tilt, 0, 255, val => fix.tilt = parseInt(val)));
+        }
+
+        // Filtre Frost / Difusió
+        card.appendChild(createSlider('Frost', fix.filter, 0, 255, val => fix.filter = parseInt(val)));
+
+        container.appendChild(card);
+      });
+    }
+
+    function createSlider(label, value, min, max, onChange) {
+      const row = document.createElement('div');
+      row.className = 'channel-row';
+      row.innerHTML = `
+        <label>${label}</label>
+        <input type="range" min="${min}" max="${max}" value="${value}">
+        <span>${value}</span>
+      `;
+      const input = row.querySelector('input');
+      const span = row.querySelector('span');
+      input.addEventListener('input', e => {
+        span.textContent = e.target.value;
+        onChange(e.target.value);
+      });
+      return row;
+    }
+
+    // GESTIÓ DE MEMÒRIES (PROGRAMACIÓ DMX)
+    function recordScene() {
+      const currentSnapshot = fixtures.map(f => ({ ...f }));
+      savedScenes.push(currentSnapshot);
+      alert(`Escena ${savedScenes.length} enregistrada amb èxit!`);
+    }
+
+    function playScene(index) {
+      if (!savedScenes[index]) {
+        alert(`L'escena ${index + 1} no està gravada.`);
+        return;
+      }
+      const scene = savedScenes[index];
+      scene.forEach((savedFix, i) => {
+        Object.assign(fixtures[i], savedFix);
+      });
+      buildDMXConsole(); // Actualitza la interfície
+    }
+
+    function clearScenes() {
+      savedScenes = [];
+      alert('Memòries esborrades.');
+    }
+
+    // Inicialitzar aplicació
+    buildDMXConsole();
+    render();
+  </script>
+</body>
+</html>
