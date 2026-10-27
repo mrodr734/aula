@@ -10,145 +10,261 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root {
-            --primary: #2e7d32;
-            --bg: #f4f6f8;
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #22c55e;
+            --accent-hover: #16a34a;
+            --text-color: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg);
-            margin: 0;
-            padding: 20px;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            color: #333;
+            padding: 20px;
+            overflow-x: hidden;
         }
 
-        h1 {
-            color: var(--primary);
+        header {
+            text-align: center;
             margin-bottom: 20px;
         }
 
-        .container {
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #4ade80, #22c55e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
             display: flex;
-            flex-wrap: wrap;
-            gap: 30px;
+            align-items: center;
             justify-content: center;
-            max-width: 1000px;
-            width: 100%;
+            gap: 10px;
         }
 
-        .input-section {
-            flex: 1;
-            min-width: 300px;
+        .main-layout {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+            width: 100%;
+            max-width: 1100px;
+        }
+
+        /* Panell d'Opcions Plegable */
+        .controls-card {
+            background: var(--card-bg);
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 20px;
+            width: 100%;
+            max-width: 600px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .controls-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .controls-header h2 {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .toggle-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .controls-content {
+            margin-top: 15px;
             display: flex;
             flex-direction: column;
             gap: 10px;
         }
 
+        .controls-content.hidden {
+            display: none;
+        }
+
         textarea {
             width: 100%;
-            height: 250px;
+            height: 120px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            color: var(--text-color);
             padding: 12px;
-            border: 2px solid #ccc;
-            border-radius: 8px;
-            font-size: 16px;
+            font-size: 1rem;
             resize: vertical;
-            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s;
         }
 
         textarea:focus {
-            border-color: var(--primary);
-            outline: none;
+            border-color: var(--accent);
         }
 
-        .wheel-section {
-            flex: 1;
-            min-width: 320px;
+        /* Escenari de la Ruleta (Protagonista) */
+        .wheel-stage {
             display: flex;
             flex-direction: column;
             align-items: center;
             position: relative;
+            margin-top: 10px;
         }
 
-        .wheel-container {
+        .wheel-wrapper {
             position: relative;
-            width: 320px;
-            height: 320px;
+            padding: 15px;
+            background: radial-gradient(circle, #1e293b 0%, #0f172a 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 50px rgba(34, 197, 94, 0.15),
+                        inset 0 0 15px rgba(0, 0, 0, 0.5);
         }
 
         /* Indicador / Agulla */
-        .arrow {
+        .pointer {
             position: absolute;
-            top: -15px;
+            top: 0;
             left: 50%;
             transform: translateX(-50%);
             width: 0;
             height: 0;
-            border-left: 15px solid transparent;
-            border-right: 15px solid transparent;
-            border-top: 25px solid #d32f2f;
-            z-index: 10;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 35px solid #ef4444;
+            z-index: 20;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));
         }
 
         canvas {
             border-radius: 50%;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            display: block;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
         }
 
-        button {
-            margin-top: 20px;
-            padding: 12px 30px;
-            font-size: 18px;
-            font-weight: bold;
-            color: white;
-            background-color: var(--primary);
+        /* Botó Principal */
+        .spin-btn {
+            margin-top: 30px;
+            padding: 16px 48px;
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: #0f172a;
+            background: linear-gradient(135deg, #4ade80, #22c55e);
             border: none;
-            border-radius: 25px;
+            border-radius: 50px;
             cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.4);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
-        button:hover {
-            background-color: #1b5e20;
+        .spin-btn:hover {
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 0 30px rgba(34, 197, 94, 0.6);
         }
 
-        button:active {
-            transform: scale(0.98);
+        .spin-btn:active {
+            transform: translateY(1px) scale(0.98);
         }
 
-        #result {
-            margin-top: 20px;
-            font-size: 22px;
-            font-weight: bold;
-            color: var(--primary);
-            min-height: 30px;
+        .spin-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Resultat */
+        .result-container {
+            margin-top: 25px;
+            min-height: 50px;
             text-align: center;
+        }
+
+        .result-text {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #ffffff;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Adaptabilitat Mòbil */
+        @media (max-width: 550px) {
+            .wheel-wrapper {
+                transform: scale(0.75);
+                margin: -40px 0;
+            }
+            h1 { font-size: 1.8rem; }
+            .spin-btn { font-size: 1.1rem; padding: 12px 36px; }
         }
     </style>
 </head>
 <body>
 
-    <h1>☘️ Ruleta aleatòria</h1>
+    <header>
+        <h1><span>☘️</span> Ruleta aleatòria</h1>
+    </header>
 
-    <div class="container">
-        <div class="input-section">
-            <label for="options"><strong>Escriu les opcions (una per línia):</strong></label>
-            <textarea id="options" placeholder="Opció 1&#10;Opció 2&#10;Opció 3&#10;Opció 4">Opció 1
+    <div class="main-layout">
+        
+        <!-- Panell d'entrada plegable -->
+        <div class="controls-card">
+            <div class="controls-header" id="toggleHeader">
+                <h2>✏️ Edita les opcions (una per línia)</h2>
+                <button class="toggle-btn" id="toggleIcon">▲</button>
+            </div>
+            <div class="controls-content" id="controlsContent">
+                <textarea id="options" placeholder="Escriu opcions aquí...">Opció 1
 Opció 2
 Opció 3
-Opció 4</textarea>
+Opció 4
+Opció 5
+Opció 6</textarea>
+            </div>
         </div>
 
-        <div class="wheel-section">
-            <div class="wheel-container">
-                <div class="arrow"></div>
-                <canvas id="canvas" width="320" height="320"></canvas>
+        <!-- Àrea de la Ruleta Gran -->
+        <div class="wheel-stage">
+            <div class="pointer"></div>
+            <div class="wheel-wrapper">
+                <canvas id="canvas" width="500" height="500"></canvas>
             </div>
-            <button id="spinBtn">Girar la ruleta!</button>
-            <div id="result"></div>
+            <button class="spin-btn" id="spinBtn">GIRAR!</button>
+            
+            <div class="result-container">
+                <div class="result-text" id="result"></div>
+            </div>
         </div>
+
     </div>
 
     <script>
@@ -157,13 +273,26 @@ Opció 4</textarea>
         const textarea = document.getElementById('options');
         const spinBtn = document.getElementById('spinBtn');
         const resultDiv = document.getElementById('result');
+        const toggleHeader = document.getElementById('toggleHeader');
+        const controlsContent = document.getElementById('controlsContent');
+        const toggleIcon = document.getElementById('toggleIcon');
 
         let options = [];
         let startAngle = 0;
         let isSpinning = false;
 
-        // Paleta de colors
-        const colors = ['#4CAF50', '#FF9800', '#2196F3', '#E91E63', '#9C27B0', '#00BCD4', '#FFEB3B', '#FF5722'];
+        // Paleta de colors vibrants
+        const colors = [
+            '#ef4444', '#f97316', '#f59e0b', 
+            '#10b981', '#06b6d4', '#3b82f6', 
+            '#8b5cf6', '#ec4899'
+        ];
+
+        // Plegar/desplegar el panell d'opcions
+        toggleHeader.addEventListener('click', () => {
+            controlsContent.classList.toggle('hidden');
+            toggleIcon.innerText = controlsContent.classList.contains('hidden') ? '▼' : '▲';
+        });
 
         function getOptions() {
             return textarea.value
@@ -181,7 +310,7 @@ Opció 4</textarea>
             if (numOptions === 0) {
                 ctx.beginPath();
                 ctx.arc(radius, radius, radius, 0, 2 * Math.PI);
-                ctx.fillStyle = '#ccc';
+                ctx.fillStyle = '#334155';
                 ctx.fill();
                 return;
             }
@@ -199,47 +328,69 @@ Opció 4</textarea>
                 ctx.lineTo(radius, radius);
                 ctx.fill();
 
+                // Vora blanca fina entre opcions
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
                 // Dibuixar text
                 ctx.save();
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 14px sans-serif';
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                ctx.shadowBlur = 4;
+                ctx.font = 'bold 18px system-ui, sans-serif';
+                
                 ctx.translate(
-                    radius + Math.cos(angle + arcSize / 2) * (radius * 0.65),
-                    radius + Math.sin(angle + arcSize / 2) * (radius * 0.65)
+                    radius + Math.cos(angle + arcSize / 2) * (radius * 0.62),
+                    radius + Math.sin(angle + arcSize / 2) * (radius * 0.62)
                 );
                 ctx.rotate(angle + arcSize / 2 + Math.PI / 2);
                 
                 let text = options[i];
-                if (text.length > 12) text = text.substring(0, 10) + '...';
+                if (text.length > 16) text = text.substring(0, 14) + '...';
                 ctx.fillText(text, -ctx.measureText(text).width / 2, 0);
                 ctx.restore();
             }
+
+            // Cercle central decoratiu (Eix de la ruleta)
+            ctx.beginPath();
+            ctx.arc(radius, radius, 30, 0, 2 * Math.PI);
+            ctx.fillStyle = '#0f172a';
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 4;
+            ctx.stroke();
         }
 
         function spin() {
             if (isSpinning) return;
             options = getOptions();
             if (options.length < 2) {
-                alert("Afegeix almenys 2 opcions per girar la ruleta!");
+                alert("Afegeix almenys 2 opcions per poder girar!");
                 return;
             }
 
             isSpinning = true;
-            resultDiv.innerText = '';
+            spinBtn.disabled = true;
+            resultDiv.innerHTML = '';
 
-            const spinDuration = 4000; // 4 segons
+            // Amagar automàticament el panell per donar màxim protagonisme
+            controlsContent.classList.add('hidden');
+            toggleIcon.innerText = '▼';
+
+            const spinDuration = 5000; // 5 segons
             const start = performance.now();
             const initialAngle = startAngle;
             
-            // Voltes aleatòries + angle final
-            const totalRotation = (Math.floor(Math.random() * 5) + 5) * 2 * Math.PI + Math.random() * 2 * Math.PI;
+            // Calculem voltes (entre 6 i 10 voltes completes)
+            const totalRotation = (Math.floor(Math.random() * 5) + 6) * 2 * Math.PI + Math.random() * 2 * Math.PI;
 
             function animate(now) {
                 const elapsed = now - start;
                 const progress = Math.min(elapsed / spinDuration, 1);
                 
-                // Funció de frenada (easeOutCubic)
-                const easeOut = 1 - Math.pow(1 - progress, 3);
+                // Efecte de frenada suau (easeOutQuart)
+                const easeOut = 1 - Math.pow(1 - progress, 4);
                 
                 startAngle = initialAngle + easeOut * totalRotation;
                 drawWheel();
@@ -248,6 +399,7 @@ Opció 4</textarea>
                     requestAnimationFrame(animate);
                 } else {
                     isSpinning = false;
+                    spinBtn.disabled = false;
                     getWinner();
                 }
             }
@@ -259,21 +411,30 @@ Opció 4</textarea>
             const numOptions = options.length;
             const arcSize = (2 * Math.PI) / numOptions;
             
-            // Ajustem l'angle respecte l'indicador superior (270º o 3PI/2)
+            // Angle de l'indicador superior (3PI/2 radians = 270º)
             let normalizedAngle = (1.5 * Math.PI - (startAngle % (2 * Math.PI))) % (2 * Math.PI);
             if (normalizedAngle < 0) normalizedAngle += 2 * Math.PI;
 
             const winningIndex = Math.floor(normalizedAngle / arcSize);
             const winner = options[winningIndex];
 
-            resultDiv.innerText = `Ha tocat: ${winner}! 🎉`;
+            resultDiv.innerHTML = `<span class="result-text">🎉 ${winner} 🎉</span>`;
 
-            // Efecte Confetti
-            confetti({
-                particleCount: 100,
-                spread: 70,
-                origin: { y: 0.6 }
-            });
+            // Gran efecte de Confetti des dels dos costats
+            const count = 200;
+            const defaults = { origin: { y: 0.7 } };
+
+            function fire(particleRatio, opts) {
+                confetti(Object.assign({}, defaults, opts, {
+                    particleCount: Math.floor(count * particleRatio)
+                }));
+            }
+
+            fire(0.25, { spread: 26, startVelocity: 55 });
+            fire(0.2, { spread: 60 });
+            fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+            fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+            fire(0.1, { spread: 120, startVelocity: 45 });
         }
 
         // Esdeveniments
